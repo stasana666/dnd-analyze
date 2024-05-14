@@ -3,6 +3,7 @@
 #include <variant>
 #include <string>
 #include <sstream>
+#include <optional>
 
 namespace NToken {
 
@@ -32,6 +33,7 @@ public:
     }
 
     NToken::TToken Next();
+    NToken::TToken Peek();
 
     bool IsEnd() const;
 
@@ -47,4 +49,5 @@ private:
     void Skip();
 
     std::stringstream input;
+    std::optional<NToken::TToken> token;
 };

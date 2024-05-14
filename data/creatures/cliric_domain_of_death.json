@@ -1,6 +1,7 @@
 {
     "name": "Finrael",
     "proficiency": 2,
+    "level": 2,
     "resources": [
         {
             "name": "divine_channel",
@@ -19,27 +20,44 @@
             "damage": {
                 "slashing": "d6 + mod_dexterity"
             },
+            "crit_damage": {
+                "slashing": "d6"
+            },
             "attack": "mod_dexterity + proficiency",
-            "consumed_resources": [
-                {
-                    "name": "action",
-                    "count": 1
-                }
-            ]
+            "resources": {
+                "consumed_on_try": [
+                    {
+                        "name": "action",
+                        "count": 1
+                    }
+                ]
+            }
         },
         {
             "name": "death_touch_sword",
             "type": "melee_attack",
             "damage": {
-                "slashing": "d6 + mod_dexterity"
+                "slashing": "d6 + mod_dexterity",
+                "necrosis": "5 + level + level"
+            },
+            "crit_damage": {
+                "slashing": "d6"
             },
             "attack": "mod_dexterity + proficiency",
-            "consumed_resources": [
-                {
-                    "name": "action",
-                    "count": 1
-                }
-            ]
+            "resources": {
+                "consumed_on_try": [
+                    {
+                        "name": "action",
+                        "count": 1
+                    }
+                ],
+                "consumed_on_success": [
+                    {
+                        "name": "divine_channel",
+                        "count": 1
+                    }
+                ]
+            }
         }
     ],
     "stats": {

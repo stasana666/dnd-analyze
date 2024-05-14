@@ -1,0 +1,30 @@
+{
+    "name": "Jon",
+    "proficiency": 2,
+    "resources": [
+        {
+            "name": "fire_breath",
+            "max_count": 1,
+            "recovery": "recovery 5-6"
+        },
+        {
+            "name": "action"
+        }
+    ],
+    "actions": [
+        {
+        }
+    ],
+    "stats": {
+        "strength": 16,
+        "dexterity": 8,
+        "constitution": 16,
+        "intelligence": 8,
+        "wisdom": 8,
+        "charisma": 8
+    },
+    "savethrows": {
+        "strength": "mod_strength + proficiency",
+        "constitution": "mod_strength + proficiency"
+    }
+}

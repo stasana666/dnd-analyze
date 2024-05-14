@@ -1,11 +1,22 @@
 {
     "name": "Jon",
+    "level": 3,
     "proficiency": 2,
+    "max_hp": 31,
+    "armour_class": 16,
     "resources": [
         {
             "name": "action",
-            "max_count": 1,
+            "count": 1,
             "recovery": "on_turn_start"
+        },
+        {
+            "name": "action_surge",
+            "count": 0
+        },
+        {
+            "name": "second_attack",
+            "count": 0
         }
     ],
     "actions": [
@@ -15,25 +26,33 @@
             "damage": {
                 "slashing": "2d6 + mod_strength"
             },
+            "crit_damage": {
+                "slashing": "4d6 + mod_strength"
+            },
             "attack": "mod_strength + proficiency",
-            "consumed_resources": [
+            "consume_resources": [
                 {
                     "name": "action",
+                    "count": 1
+                }
+            ],
+            "recover_resources": [
+                {
+                    "name": "second_attack",
                     "count": 1
                 }
             ]
         },
         {
             "name": "action_surge",
-            "type": "single_target_spell",
-            "target": "self",
-            "consumed_resources": [
+            "type": "spell_self_buff",
+            "consume_resources": [
                 {
                     "name": "action_surge",
                     "count": 1
                 }
             ],
-            "recovery_resources": [
+            "recover_resources": [
                 {
                     "name": "action",
                     "count": 1
@@ -51,6 +70,6 @@
     },
     "savethrows": {
         "strength": "mod_strength + proficiency",
-        "constitution": "mod_strength + proficiency"
+        "constitution": "mod_constitution + proficiency"
     }
 }

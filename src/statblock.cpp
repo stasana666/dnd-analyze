@@ -1,6 +1,8 @@
 #include "statblock.h"
 
-#include "parser/tokenizer.h"
+#include "parser/parser.h"
+
+#include "damage.h"
 
 #include <iostream>
 #include <iomanip>
@@ -9,105 +11,41 @@
 #include <variant>
 #include <vector>
 
-namespace {
-
-template<class... Ts>
-struct overloaded : Ts... { using Ts::operator()...; };
-template<class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
-
-const std::array<std::string, TStats::kStatCount> kStringByStat = {
-    "strength",
-    "dexterity",
-    "constitution",
-    "intelligence",
-    "wisdom",
-    "charisma",
-};
-
-}
-
-TStats::TStats(const rapidjson::Value& json)
-{
-    for (auto it = json.GetObject().MemberBegin(); it != json.GetObject().MemberEnd(); ++it) {
-        stats[static_cast<int>(GetStatByString(it->name.GetString()))] = it->value.GetInt();
-    }
-    for (int i = 0; i < kStatCount; ++i) {
-        modStats[i] = stats[i] / 2 - 5;
-    }
-}
-
-int TStats::GetMod(std::string_view sv)
-{
-    return modStats[static_cast<int>(GetStatByString(sv))];
-}
-
-int TStats::GetMod(EStat stat)
-{
-    return modStats[static_cast<int>(stat)];
-}
-
-int TStats::GetStat(std::string_view sv)
-{
-    return stats[static_cast<int>(GetStatByString(sv))];
-}
-
-int TStats::GetStat(EStat stat)
-{
-    return stats[static_cast<int>(stat)];
-}
-
-TStats::EStat TStats::GetStatByString(std::string_view str)
-{
-    for (int i = 0; i < kStatCount; ++i) {
-        if (str == kStringByStat[i]) {
-            return static_cast<EStat>(i);
-        }
-    }
-    throw std::logic_error("unknown stat name");
-}
-
-std::string_view TStats::GetStringByStat(EStat stat)
-{
-    return kStringByStat[static_cast<int>(stat)];
-}
-
 TStatblock::TStatblock(const rapidjson::Value& json)
     : stats(json["stats"])
+    , level(json["level"].GetInt())
     , proficiency(json["proficiency"].GetInt())
+    , resources(json["resources"])
+    , maxHp(json["max_hp"].GetInt())
+    , armourClass(json["armour_class"].GetInt())
 {
-    Print();
-    ReadActions(json["actions"]);
+    const auto& varMap = GetVariableMap();
+    TParser parser(varMap);
+    savethrows.Init(json["savethrows"], parser);
+    ReadActions(parser, json["actions"]);
 }
 
-void TStatblock::ReadActions(const rapidjson::Value& json)
+void TStatblock::ReadActions(TParser& parser, const rapidjson::Value& json)
 {
     for (const auto& action : json.GetArray()) {
         std::string_view actionType = action["type"].GetString();
         if (actionType == "melee_attack") {
-            ReadMeleeAttack(action);
+            actions.emplace_back(std::make_unique<TMeleeAttack>(parser, action));
         }
-    }
-}
-
-void TStatblock::ReadMeleeAttack(const rapidjson::Value& json)
-{
-    int atkBonus = 0;
-    {
-        TTokenizer tokenizer(json["attack"].GetString());
-        while (!tokenizer.IsEnd()) {
-            NToken::TToken token = tokenizer.Next();
-            std::visit(overloaded{
-                [&](NToken::EOperator op) {
-
-                },
-                [&](NToken::TNumber number) {
-
-                },
-                [&](NToken::TString str) {
-
-                }
-            }, token);
+        if (actionType == "range_attack") {
+            actions.emplace_back(std::make_unique<TRangeAttack>(parser, action));
+        }
+        if (actionType == "spell_target_self") {
+            actions.emplace_back(std::make_unique<TSpellTargetSelf>(parser, action));
+        }
+        if (actionType == "spell_target_ally") {
+            actions.emplace_back(std::make_unique<TSpellTargetAlly>(parser, action));
+        }
+        if (actionType == "spell_target_enemy") {
+            actions.emplace_back(std::make_unique<TSpellTargetEnemy>(parser, action));
+        }
+        if (actionType == "spell_area_enemy") {
+            actions.emplace_back(std::make_unique<TSpellAreaEnemy>(parser, action));
         }
     }
 }
@@ -116,11 +54,16 @@ std::map<std::string, int> TStatblock::GetVariableMap() const
 {
     std::map<std::string, int> variables;
     variables["proficiency"] = proficiency;
+    variables["level"] = level;
 
     for (int i = 0; i < TStats::kStatCount; ++i) {
-        std::string_view statName = TStats::GetStringByStat(static_cast<TStats::EStat>(i));
-        variables[statName] = 
+        TStats::EStat stat = static_cast<TStats::EStat>(i);
+        std::string statName = TStats::GetStringByStat(stat);
+        variables[statName] = stats.GetStat(stat);
+        variables["mod_" + statName] = stats.GetMod(stat);
     }
+
+    return variables;
 }
 
 void TStatblock::Print()

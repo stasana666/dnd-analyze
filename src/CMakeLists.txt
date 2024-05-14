@@ -1,8 +1,14 @@
 add_executable(dnd_analyzer
-    damage.cpp
+    action.cpp
     battlefield.cpp
-    main.cpp
+    creature.cpp
+    damage.cpp
     distribution.cpp
-    statblock.cpp
+    main.cpp
+    parser/parser.cpp
     parser/tokenizer.cpp
+    statblock.cpp
+    resources.cpp
+    status.cpp
+    characteristics.cpp
 )

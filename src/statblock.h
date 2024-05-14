@@ -1,62 +1,36 @@
 #pragma once
 
+#include "resources.h"
+#include "action.h"
+#include "damage.h"
+
 #include <rapidjson/document.h>
 
+#include <unordered_set>
 #include <string_view>
-
 #include <vector>
 #include <string>
-
-class TStats {
-public:
-    static constexpr int kStatCount = 6;
-
-    enum class EStat {
-        Strength,
-        Dexterity,
-        Constitution,
-        Intelligence,
-        Wisdom,
-        Charisma,
-    };
-
-    TStats(const rapidjson::Value& json);
-
-    int GetMod(std::string_view sv);
-    int GetMod(EStat stat);
-
-    int GetStat(std::string_view sv);
-    int GetStat(EStat stat);
-
-    static EStat GetStatByString(std::string_view str);
-    static std::string_view GetStringByStat(EStat stat);
-
-private:
-    std::array<int, kStatCount> stats;
-    std::array<int, kStatCount> modStats;
-};
-
-class TSavethrows {
-
-};
-
-class TResources {
-
-};
+#include <map>
 
 class TStatblock {
 public:
     TStatblock(const rapidjson::Value& json);
 
-    void ReadActions(const rapidjson::Value& json);
-
-    void ReadMeleeAttack(const rapidjson::Value& json);
+    void ReadActions(TParser& parser, const rapidjson::Value& json);
 
     void Print();
     std::map<std::string, int> GetVariableMap() const;
 
+    int level;
     int proficiency;
+    int maxHp;
+    int armourClass;
     TResources resources;
-    TSavethrows savethrows;
     TStats stats;
+    TSaveThrows savethrows;
+
+    std::unordered_set<EDamageType> immunes;
+    std::unordered_set<EDamageType> resists;
+
+    std::vector<std::unique_ptr<TBaseAction>> actions;
 };

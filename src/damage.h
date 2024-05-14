@@ -1,9 +1,14 @@
 #pragma once
 
 #include "distribution.h"
+#include "parser/parser.h"
+
+#include <rapidjson/document.h>
 
 #include <string>
 #include <map>
+
+class TCreature;
 
 enum class EDamageType {
     Acid,
@@ -25,7 +30,9 @@ enum class EDamageType {
 
 class TDamage {
 public:
-    TDamage(const std::string& expression);
+    TDamage(const rapidjson::Value& json, TParser& parser);
+
+    TDistribution GetDistributionFor(const TCreature* creature) const;
 
 private:
     std::map<EDamageType, TDistribution> damageByType;
