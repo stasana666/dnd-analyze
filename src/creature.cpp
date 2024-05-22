@@ -7,3 +7,8 @@ TCreature::TCreature(const TStatblock& statblock)
     , hitpoints(statblock.maxHp)
 {
 }
+
+double TCreature::GetEstimate() const
+{
+    return hitpoints.GetEstimate() / parent->maxHp;
+}

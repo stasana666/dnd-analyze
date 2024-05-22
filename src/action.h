@@ -32,10 +32,15 @@ public:
     void ChangeResources(TResources& resources) const;
 
     bool IsOptional() const {return isOptionalAction; }
+    void DivWorldByDeath(const TBattleField* battleField, std::vector<int> targetId,
+        std::vector<std::pair<double, TBattleField>>* battles, double probWorlds) const;
+
+    std::string Name() const { return name; }
 
     virtual EActionType Type() const = 0;
 
 protected:
+    std::string name;
     bool isOptionalAction;
     std::vector<TResource> consumeOnSuccess;
     std::vector<TResource> consumeResources;

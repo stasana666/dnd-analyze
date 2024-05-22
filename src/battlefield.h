@@ -14,9 +14,12 @@ public:
 
     double GetEstimate() const;
 
+    int ActiveCreatureId() const { return activeCreature - creatures.begin(); }
+
     std::vector<TCreature> creatures;
     std::vector<TCreature>::iterator activeCreature;
     int round = 0;
+    std::array<int, 2> originalTeamSize;
 };
 
 // Для различных ситуаций, когда нужно рассматривать несколько исходов одного действия
@@ -41,7 +44,20 @@ public:
     std::vector<TParallelWorlds> MakeAction(const TBattleField& battleField, const TBaseAction* actionPtr, bool& hasAction);
 
 private:
-    double GetWinProbability(TBattleField battleField, double alpha, double beta, double weightOfTimeline, std::string space);
+    enum class EMode {
+        FindBestMove,
+        FindAnswer
+    };
+
+    struct TConfig {
+        double alpha;
+        double beta;
+        double weightOfTimeline;
+        EMode mode;
+        int depth;
+    };
+
+    double GetWinProbability(TBattleField battleField, TConfig config, std::string space);
     void RollInitiative();
 
     int width;

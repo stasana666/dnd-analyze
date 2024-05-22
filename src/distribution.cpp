@@ -142,6 +142,15 @@ int TDistribution::GetValue(std::mt19937& RandGen) const
     return valueByProbability[index].second;
 }
 
+double TDistribution::GetEstimate() const
+{
+    double res = 0;
+    for (auto [prob, value] : valueByProbability) {
+        res += prob * value;
+    }
+    return res;
+}
+
 void TDistribution::DelBelowZero()
 {
     auto it = std::remove_if(valueByProbability.begin(), valueByProbability.end(), [](std::pair<double, int> x) {

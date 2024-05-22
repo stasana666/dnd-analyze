@@ -36,6 +36,7 @@ public:
     TDistribution& operator /=(int count);
 
     int GetValue(std::mt19937& RandGen) const;
+    double GetEstimate() const;
 
     void DelBelowZero();
     void MakeMaxValue(int value);

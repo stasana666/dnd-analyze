@@ -15,6 +15,8 @@ public:
     bool IsImmune(EDamageType type) const { return parent->immunes.count(type); }
     bool IsResist(EDamageType type) const { return parent->resists.count(type); }
 
+    double GetEstimate() const;
+
     const TStatblock* parent;
     TPosition position;
     TResources resources;

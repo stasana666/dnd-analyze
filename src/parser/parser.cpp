@@ -75,27 +75,42 @@ TDistribution TParser::ReadSummand(TTokenizer& tokenizer) const
             if (tokenizer.IsEnd()) {
                 res = TDistribution(number.value);
             }
-            NToken::TToken token = tokenizer.Peek();
-            //PrintToken(token);
-            if (std::holds_alternative<NToken::TString>(token)) {
-                NToken::TString str = std::get<NToken::TString>(token);
-                if (str.value != "d") {
-                    throw std::logic_error("expect \'d\', but found " + str.value);
-                }
-                tokenizer.Next();
-
-                token = tokenizer.Next();
+            if (!tokenizer.IsEnd()) {
+                NToken::TToken token = tokenizer.Peek();
                 //PrintToken(token);
-                if (std::holds_alternative<NToken::TNumber>(token)) {
-                    NToken::TNumber dice_size = std::get<NToken::TNumber>(token);
-                    res = TDistribution(TDice{dice_size.value}) * number.value;
+                if (std::holds_alternative<NToken::TString>(token)) {
+                    NToken::TString str = std::get<NToken::TString>(token);
+                    if (str.value != "d") {
+                        throw std::logic_error("expect \'d\', but found " + str.value);
+                    }
+                    tokenizer.Next();
+
+                    token = tokenizer.Next();
+                    //PrintToken(token);
+                    if (std::holds_alternative<NToken::TNumber>(token)) {
+                        NToken::TNumber dice_size = std::get<NToken::TNumber>(token);
+                        res = TDistribution(TDice{dice_size.value}) * number.value;
+                    }
+                } else {
+                    res = TDistribution(number.value);
                 }
             } else {
                 res = TDistribution(number.value);
             }
+            
         },
         [&](NToken::TString str) {
-            res = TDistribution(variables.at(str.value));
+            if (str.value == "d") {
+                NToken::TToken token = tokenizer.Next();
+                if (std::holds_alternative<NToken::TNumber>(token)) {
+                    NToken::TNumber dice_size = std::get<NToken::TNumber>(token);
+                    res = TDistribution(TDice{dice_size.value});
+                } else {
+                    throw std::logic_error("expected number after \'d\'");
+                }
+            } else {
+                res = TDistribution(variables.at(str.value));
+            }
         }
     }, token);
 

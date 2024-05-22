@@ -1,27 +1,71 @@
 {
-    "name": "Jon",
-    "proficiency": 2,
+    "name": "chimera",
+    "proficiency": 3,
+    "level": 6,
+    "max_hp": 114,
+    "armour_class": 14,
     "resources": [
         {
             "name": "fire_breath",
-            "max_count": 1,
+            "count": 1,
             "recovery": "recovery 5-6"
         },
         {
-            "name": "action"
+            "name": "action",
+            "count": 1,
+            "recovery": "on_turn_start"
+        },
+        {
+            "name": "second_action",
+            "count": 0
+        },
+        {
+            "name": "third_action",
+            "count": 0
         }
     ],
     "actions": [
         {
+            "name": "fire_breath",
+            "type": "spell_area_enemy",
+            "size": 2,
+            "savethrow": "dexterity",
+            "dificulty": "15",
+            "damage": {
+                "fire": "7d8"
+            }
+        },
+        {
+            "name": "bite",
+            "type": "melee_attack",
+            "damage": {
+                "piercing": "2d6 + 4"
+            },
+            "crit_damage": {
+                "slashing": "4d6 + 4"
+            },
+            "attack": "7",
+            "consume_resources": [
+                {
+                    "name": "action",
+                    "count": 1
+                }
+            ],
+            "recover_resources": [
+                {
+                    "name": "second_action",
+                    "count": 1
+                }
+            ]
         }
     ],
     "stats": {
-        "strength": 16,
-        "dexterity": 8,
-        "constitution": 16,
-        "intelligence": 8,
-        "wisdom": 8,
-        "charisma": 8
+        "strength": 19,
+        "dexterity": 11,
+        "constitution": 19,
+        "intelligence": 3,
+        "wisdom": 14,
+        "charisma": 10
     },
     "savethrows": {
         "strength": "mod_strength + proficiency",

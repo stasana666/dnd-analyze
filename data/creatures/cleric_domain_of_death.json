@@ -1,0 +1,105 @@
+{
+    "name": "cleric",
+    "proficiency": 3,
+    "level": 8,
+    "max_hp": 70,
+    "armour_class": 22,
+    "resources": [
+        {
+            "name": "divine_channel",
+            "count": 3
+        },
+        {
+            "name": "action",
+            "count": 1,
+            "recovery": "on_turn_start"
+        },
+        {
+            "name": "spell_1",
+            "count": 4
+        }
+    ],
+    "actions": [
+        {
+            "name": "death_touch_sword",
+            "type": "melee_attack",
+            "damage": {
+                "slashing": "d6 + mod_dexterity",
+                "necrosis": "5 + level + level"
+            },
+            "crit_damage": {
+                "slashing": "2d6 + mod_dexterity",
+                "necrosis": "5 + level + level"
+            },
+            "attack": "mod_dexterity + proficiency",
+            "consume_resources": [
+                {
+                    "name": "action",
+                    "count": 1
+                }
+            ],
+            "consume_on_success": [
+                {
+                    "name": "divine_channel",
+                    "count": 1
+                }
+            ]
+        },
+        {
+            "name": "death_touch_inflict_wounds_1",
+            "type": "melee_attack",
+            "damage": {
+                "necrosis": "5 + level + level + 3d10"
+            },
+            "crit_damage": {
+                "necrosis": "5 + level + level + 6d10"
+            },
+            "attack": "mod_wisdom + proficiency + 1",
+            "consume_resources": [
+                {
+                    "name": "action",
+                    "count": 1
+                },
+                {
+                    "name": "spell_1",
+                    "count": 1
+                }
+            ],
+            "consume_on_success": [
+                {
+                    "name": "divine_channel",
+                    "count": 1
+                }
+            ]
+        },
+        {
+            "name": "sword",
+            "type": "melee_attack",
+            "damage": {
+                "slashing": "d6 + mod_dexterity"
+            },
+            "crit_damage": {
+                "slashing": "d6"
+            },
+            "attack": "mod_dexterity + proficiency",
+            "consume_resources": [
+                {
+                    "name": "action",
+                    "count": 1
+                }
+            ]
+        }
+    ],
+    "stats": {
+        "strength": 8,
+        "dexterity": 14,
+        "constitution": 12,
+        "intelligence": 12,
+        "wisdom": 22,
+        "charisma": 12
+    },
+    "savethrows": {
+        "strength": "mod_strength + proficiency",
+        "constitution": "mod_strength + proficiency"
+    }
+}

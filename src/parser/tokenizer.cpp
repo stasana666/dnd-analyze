@@ -61,6 +61,7 @@ NToken::TToken TTokenizer::Next()
     if (IsString()) {
         return ReadString();
     }
+    std::cerr << "\"" << input.str() << "\"" << std::endl;
     throw std::logic_error("TTokenizer::Next()");
 }
 

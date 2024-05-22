@@ -6,6 +6,7 @@
 #include "status.h"
 
 #include <iostream>
+#include <algorithm>
 
 namespace {
 
@@ -27,6 +28,7 @@ void Normalize(TParallelWorlds& worlds)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 TBaseAction::TBaseAction(TParser& parser, const rapidjson::Value& json)
+    : name(json["name"].GetString())
 {
     auto readResources = [](std::vector<TResource>& resources, const rapidjson::Value& json) {
         for (auto& resource : json.GetArray()) {
@@ -37,7 +39,7 @@ TBaseAction::TBaseAction(TParser& parser, const rapidjson::Value& json)
         readResources(consumeResources, json["consume_resources"]);
     }
     if (json.HasMember("consume_on_success")) {
-        readResources(consumeOnSuccess, json["consum_on_success"]);
+        readResources(consumeOnSuccess, json["consume_on_success"]);
     }
     if (json.HasMember("recover_resources")) {
         readResources(recoverResources, json["recover_resources"]);
@@ -47,6 +49,11 @@ TBaseAction::TBaseAction(TParser& parser, const rapidjson::Value& json)
 bool TBaseAction::CheckResources(const TResources& resources) const
 {
     for (auto res : consumeResources) {
+        if (!resources.Check(res)) {
+            return false;
+        }
+    }
+    for (auto res : consumeOnSuccess) {
         if (!resources.Check(res)) {
             return false;
         }
@@ -61,6 +68,51 @@ void TBaseAction::ChangeResources(TResources& resources) const
     }
     for (auto res : recoverResources) {
         resources.AddTmpResource(res);
+    }
+}
+
+void TBaseAction::DivWorldByDeath(const TBattleField* battleField, std::vector<int> targetIds,
+    TParallelWorlds* battles, double probWorlds) const
+{
+    std::sort(targetIds.begin(), targetIds.end());
+    std::reverse(targetIds.begin(), targetIds.end());
+
+    // Переберем все возможные исходы. биты означают 1 - жив, 0 - мертв
+    std::vector<double> probsDead;
+    for (size_t i : targetIds) {
+        probsDead.emplace_back(battleField->creatures[i].hitpoints < 1);
+    }
+    TParallelWorlds worlds;
+    for (int mask = 0; mask < (1 << targetIds.size()); ++mask) {
+        double worldProb = 1;
+        for (int i = 0; i < targetIds.size(); ++i) {
+            if (mask & (1 << i)) {
+                worldProb *= 1 - probsDead[i];
+            } else {
+                worldProb *= probsDead[i];
+            }
+        }
+        if (worldProb < kDeathEps) {
+            continue;
+        }
+        worlds.emplace_back(worldProb, *battleField);
+        for (int i = 0; i < targetIds.size(); ++i) {
+            if (mask & (1 << i)) {
+                worlds.back().second.creatures[targetIds[i]].hitpoints.DelBelowZero();
+            } else {
+                if (worlds.back().second.ActiveCreatureId() > targetIds[i]) {
+                    --worlds.back().second.activeCreature;
+                }
+                worlds.back().second.creatures.erase(worlds.back().second.creatures.begin() + targetIds[i]);
+            }
+        }
+    }
+    Normalize(worlds);
+    for (auto& [prob, _] : worlds) {
+        prob *= probWorlds;
+    }
+    for (auto& world : worlds) {
+        battles->emplace_back(std::move(world));
     }
 }
 
@@ -103,28 +155,35 @@ void TMeleeAttack::Attack(const TBattleField* battleField, int creatureId, int t
     ChangeResources(creature->resources);
     double failProbability = std::min(1. - critProbability, std::max(1. / 20., (target->parent->armourClass - attackBonus - 1) / 20.));
     double successProbability = std::max(0., 1. - critProbability - failProbability);
-    std::vector<std::pair<double, TDistribution>> damages;
-    damages.emplace_back(critProbability, critDamage.GetDistributionFor(target));
-    if (successProbability > 0) {
-        damages.emplace_back(successProbability, damage.GetDistributionFor(target));
-    }
-    damages.emplace_back(failProbability, TDistribution(0));
+    
+    if (consumeOnSuccess.empty()) {
+        // Тут не нужно разделять успех и провал атаки, просто наносим урон
+        std::vector<std::pair<double, TDistribution>> damages;
+        damages.emplace_back(critProbability, critDamage.GetDistributionFor(target));
+        if (successProbability > 0) {
+            damages.emplace_back(successProbability, damage.GetDistributionFor(target));
+        }
+        damages.emplace_back(failProbability, TDistribution(0));
 
-    target->hitpoints -= TDistribution(damages);
+        target->hitpoints -= TDistribution(damages);
 
-    double probDeath = target->hitpoints < 0;
-    double probLife = 1. - probDeath;
-    if (probDeath > 0.01) {
-        TBattleField otherWorld(battle);
-        otherWorld.creatures.erase(otherWorld.creatures.begin() + targetId);
-        otherWorld.activeCreature = otherWorld.creatures.begin() + creatureId - (creatureId > targetId);
-        battles->emplace_back(probDeath, otherWorld);
-    }
-    if (probLife > 0.01) {
-        battle.creatures[targetId].hitpoints.DelBelowZero();
-        battles->emplace_back(probLife, battle);
-    }
+        DivWorldByDeath(&battle, {targetId}, battles, 1.);
+    } else {
+        // Добавим мир, в котором ничего не произошло
+        battles->emplace_back(failProbability, battle);
 
+        // Добавим миры, где атака попала и ресурс потратился
+        std::vector<std::pair<double, TDistribution>> damages;
+        damages.emplace_back(critProbability / (1 - failProbability), critDamage.GetDistributionFor(target));
+        if (successProbability > 0) {
+            damages.emplace_back(successProbability / (1 - failProbability), damage.GetDistributionFor(target));
+        }
+        target->hitpoints -= TDistribution(damages);
+        for (auto res : consumeOnSuccess) {
+            creature->resources.Consume(res);
+        }
+        DivWorldByDeath(&battle, {targetId}, battles, 1 - failProbability);
+    }
     Normalize(*battles);
 }
 
@@ -149,29 +208,35 @@ void TRangeAttack::Attack(const TBattleField* battleField, int creatureId, int t
     ChangeResources(creature->resources);
     double failProbability = std::min(1. - critProbability, std::max(1. / 20., (target->parent->armourClass - attackBonus - 1) / 20.));
     double successProbability = std::max(0., 1. - critProbability - failProbability);
-    std::vector<std::pair<double, TDistribution>> damages;
-    damages.emplace_back(critProbability, critDamage.GetDistributionFor(target));
-    if (successProbability > 0) {
-        damages.emplace_back(successProbability, damage.GetDistributionFor(target));
+
+    if (consumeOnSuccess.empty()) {
+        // Тут не нужно разделять успех и провал атаки, просто наносим урон
+        std::vector<std::pair<double, TDistribution>> damages;
+        damages.emplace_back(critProbability, critDamage.GetDistributionFor(target));
+        if (successProbability > 0) {
+            damages.emplace_back(successProbability, damage.GetDistributionFor(target));
+        }
+        damages.emplace_back(failProbability, TDistribution(0));
+
+        target->hitpoints -= TDistribution(damages);
+
+        DivWorldByDeath(&battle, {targetId}, battles, 1.);
+    } else {
+        // Добавим мир, в котором ничего не произошло
+        battles->emplace_back(failProbability, battle);
+
+        // Добавим миры, где атака попала и ресурс потратился
+        std::vector<std::pair<double, TDistribution>> damages;
+        damages.emplace_back(critProbability / (1 - failProbability), critDamage.GetDistributionFor(target));
+        if (successProbability > 0) {
+            damages.emplace_back(successProbability / (1 - failProbability), damage.GetDistributionFor(target));
+        }
+        target->hitpoints -= TDistribution(damages);
+        for (auto res : consumeOnSuccess) {
+            target->resources.Consume(res);
+        }
+        DivWorldByDeath(&battle, {targetId}, battles, 1 - failProbability);
     }
-    damages.emplace_back(failProbability, TDistribution(0));
-
-    target->hitpoints -= TDistribution(damages);
-
-    double probDeath = target->hitpoints < 0;
-    double probLife = 1. - probDeath;
-
-    if (probDeath > kDeathEps) {
-        TBattleField otherWorld(battle);
-        otherWorld.creatures.erase(otherWorld.creatures.begin() + targetId);
-        otherWorld.activeCreature = otherWorld.creatures.begin() + creatureId - (creatureId > targetId);
-        battles->emplace_back(probDeath, otherWorld);
-    }
-    if (probLife > kDeathEps) {
-        battle.creatures[targetId].hitpoints.DelBelowZero();
-        battles->emplace_back(probLife, battle);
-    }
-
     Normalize(*battles);
 }
 
@@ -184,7 +249,11 @@ TBaseSpell::TBaseSpell(TParser& parser, const rapidjson::Value& json)
         damage = TDamage(json["damage"], parser);
     }
     if (json.HasMember("heal")) {
-
+        heal.emplace(parser.ParseDistribution(json["heal"].GetString()));
+    }
+    if (json.HasMember("savethrow")) {
+        savethrow.emplace(TStats::GetStatByString(json["savethrow"].GetString()));
+        difficulty = parser.Parse(json["difficulty"].GetString());
     }
 }
 

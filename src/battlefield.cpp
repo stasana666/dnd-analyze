@@ -2,19 +2,32 @@
 
 #include <algorithm>
 #include <iostream>
+#include <deque>
+#include <cmath>
 #include <set>
+
+namespace {
+
+constexpr int kDepth = 11;
+
+}
 
 TBattleField::TBattleField(std::vector<TCreature> creatures_)
     : creatures(creatures_)
     , activeCreature(this->creatures.end())
     , round(0)
+    , originalTeamSize({0, 0})
 {
+    for (auto& creature : creatures) {
+        ++originalTeamSize[creature.team];
+    }
 }
 
 TBattleField::TBattleField(const TBattleField& battleField)
     : creatures(battleField.creatures)
     , activeCreature(creatures.begin() + (battleField.activeCreature - battleField.creatures.begin()))
     , round(battleField.round)
+    , originalTeamSize(battleField.originalTeamSize)
 {
 }
 
@@ -41,7 +54,13 @@ void TBattleField::OnTurnStart()
 
 double TBattleField::GetEstimate() const
 {
-    return 0.;
+    std::array<double, 2> result = {0., 0.};
+    for (auto& creature : creatures) {
+        result[creature.team] += creature.GetEstimate();
+    }
+    result[0] /= originalTeamSize[0];
+    result[1] /= originalTeamSize[1];
+    return 1. / (1. + std::exp(2 * (result[1] - result[0])));
 }
 
 TEncounter::TEncounter(int width, int height, int randSeed)
@@ -62,13 +81,23 @@ double TEncounter::GetWinProbability()
 {
     TBattleField battleField(creatures);
     battleField.OnRoundStart();
-    return GetWinProbability(battleField, 0., 1., 1., "");
+    return GetWinProbability(
+        battleField,
+        TConfig{
+            .alpha = 0.,
+            .beta = 1.,
+            .weightOfTimeline = 1.,
+            .mode = EMode::FindAnswer,
+            .depth = kDepth
+        },
+        ""
+    );
 }
 
-double TEncounter::GetWinProbability(TBattleField battleField, double alpha, double beta, double weightOfTimeline, std::string space)
+double TEncounter::GetWinProbability(TBattleField battleField, TConfig config, std::string space)
 {
-    if (weightOfTimeline < 1e-2) {
-        return 0.5;
+    if (config.weightOfTimeline < 1e-3) {
+        return battleField.GetEstimate();
     }
 
     const int CurrentTeam = battleField.activeCreature->team;
@@ -83,22 +112,29 @@ double TEncounter::GetWinProbability(TBattleField battleField, double alpha, dou
         return 1;
     }
 
-    if (battleField.round >= 10) {
-        return 0.5; // draw
+    if (config.mode == EMode::FindBestMove && config.depth == 0) {
+        return battleField.GetEstimate();
     }
 
     double result = CurrentTeam;
-    auto updateResult = [&](double localRes) {
+    TParallelWorlds* bestMove = nullptr;
+    auto updateResult = [&](double localRes, TParallelWorlds* move) {
         if (CurrentTeam == 0) {
-            alpha = std::max(alpha, localRes);
+            if (localRes > result) {
+                bestMove = move;
+            }
+            config.alpha = std::max(config.alpha, localRes);
             result = std::max(result, localRes);
         } else if (CurrentTeam == 1) {
-            beta = std::min(beta, localRes);
+            if (localRes < result) {
+                bestMove = move;
+            }
+            config.beta = std::min(config.beta, localRes);
             result = std::min(result, localRes);
         } else {
             throw std::logic_error("unexpected team");
         }
-        if (alpha >= beta - 1e-3) {
+        if (config.alpha >= config.beta - 1e-3) {
             return true;
         }
         return false;
@@ -117,21 +153,112 @@ double TEncounter::GetWinProbability(TBattleField battleField, double alpha, dou
     for (TParallelWorlds& worlds : multiverse) {
         double fullResult = 0;
         for (auto& [prob, world] : worlds) {
-            fullResult += prob * GetWinProbability(world, alpha, beta, prob * weightOfTimeline, space + "  ");
+            fullResult += prob * GetWinProbability(
+                world,
+                TConfig{
+                    .alpha = config.alpha,
+                    .beta = config.beta,
+                    .weightOfTimeline = config.weightOfTimeline * prob,
+                    .mode = EMode::FindBestMove,
+                    .depth = config.depth - 1
+                },
+                space + "  "
+            );
         }
-        if (updateResult(fullResult)) {
+        if (updateResult(fullResult, &worlds)) {
+            // Нашли ожидаемый лучший ход - сделаем его и найдем ответ для новой позиции
+            if (config.mode == EMode::FindAnswer) {
+                if (bestMove == nullptr) {
+                    std::cerr << "nullptr 1" << std::endl;
+                }
+                std::cerr << "kek" << std::endl;
+                result = 0;
+                for (auto& [prob, world] : (*bestMove)) {
+                    result += prob * GetWinProbability(
+                        world,
+                        TConfig{
+                            .alpha = 0.,
+                            .beta = 1.,
+                            .weightOfTimeline = config.weightOfTimeline * prob,
+                            .mode = EMode::FindAnswer,
+                            .depth = kDepth
+                        },
+                        space + "  "
+                    );
+                }
+            }
             return result;
         }
     }
 
     // Нельзя пропускать ход, если можно сделать что-то не помеченное как optional
     if (hasNotOptionalAction) {
+        if (config.mode == EMode::FindAnswer) {
+            if (bestMove == nullptr) {
+                std::cerr << "nullptr 2" << std::endl;
+            }
+            result = 0;
+            for (auto& [prob, world] : (*bestMove)) {
+                result += prob * GetWinProbability(
+                    world,
+                    TConfig{
+                        .alpha = 0.,
+                        .beta = 1.,
+                        .weightOfTimeline = config.weightOfTimeline * prob,
+                        .mode = EMode::FindAnswer,
+                        .depth = kDepth
+                    },
+                    space + "  "
+                );
+            }
+        }
         return result;
     }
     battleField.OnTurnEnd();
 
-    updateResult(GetWinProbability(battleField,  alpha, beta, weightOfTimeline, space + "  "));
+    //std::cerr << space << "EndTurn" << std::endl;
 
+    updateResult(GetWinProbability(
+        battleField,
+        TConfig{
+            .alpha = config.alpha,
+            .beta = config.beta,
+            .weightOfTimeline = config.weightOfTimeline,
+            .mode = EMode::FindBestMove,
+            .depth = config.depth - 1
+        },
+        space + "  "), nullptr);
+
+    if (config.mode == EMode::FindAnswer) {
+        if (bestMove == nullptr) {
+            return GetWinProbability(
+                battleField,
+                TConfig{
+                    .alpha = 0.,
+                    .beta = 1.,
+                    .weightOfTimeline = config.weightOfTimeline,
+                    .mode = EMode::FindAnswer,
+                    .depth = kDepth
+                },
+                space + " "
+            );
+        } else {
+            result = 0;
+            for (auto& [prob, world] : (*bestMove)) {
+                result += prob * GetWinProbability(
+                    world,
+                    TConfig{
+                        .alpha = 0.,
+                        .beta = 1.,
+                        .weightOfTimeline = config.weightOfTimeline * prob,
+                        .mode = EMode::FindAnswer,
+                        .depth = kDepth
+                    },
+                    space + "  "
+                );
+            }
+        }
+    }
     return result;
 }
 
