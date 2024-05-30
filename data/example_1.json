@@ -1,0 +1,65 @@
+{
+    "width": 6,
+    "height": 6,
+    "creatures": [
+        {
+            "name": "warrior",
+            "x": 5,
+            "y": 5,
+            "team": 0
+        },
+        {
+            "name": "warrior",
+            "x": 0,
+            "y": 0,
+            "team": 1
+        }
+    ],
+    "statblocks": [
+        {
+            "name": "warrior",
+            "level": 1,
+            "proficiency": 2,
+            "max_hp": 1,
+            "armour_class": 16,
+            "resources": [
+                {
+                    "name": "action",
+                    "count": 1,
+                    "recovery": "on_turn_start"
+                }
+            ],
+            "actions": [
+                {
+                    "name": "longsword",
+                    "type": "melee_attack",
+                    "damage": {
+                        "slashing": "2d6 + mod_strength"
+                    },
+                    "crit_damage": {
+                        "slashing": "4d6 + mod_strength"
+                    },
+                    "attack": "mod_strength + proficiency",
+                    "consume_resources": [
+                        {
+                            "name": "action",
+                            "count": 1
+                        }
+                    ]
+                }
+            ],
+            "stats": {
+                "strength": 16,
+                "dexterity": 8,
+                "constitution": 16,
+                "intelligence": 8,
+                "wisdom": 8,
+                "charisma": 8
+            },
+            "savethrows": {
+                "strength": "mod_strength + proficiency",
+                "constitution": "mod_constitution + proficiency"
+            }
+        }
+    ]
+}

@@ -8,7 +8,7 @@
 
 namespace {
 
-constexpr int kDepth = 11;
+constexpr int kDepth = 15;
 
 }
 
@@ -17,6 +17,7 @@ TBattleField::TBattleField(std::vector<TCreature> creatures_)
     , activeCreature(this->creatures.end())
     , round(0)
     , originalTeamSize({0, 0})
+    , turnStart(false)
 {
     for (auto& creature : creatures) {
         ++originalTeamSize[creature.team];
@@ -28,6 +29,7 @@ TBattleField::TBattleField(const TBattleField& battleField)
     , activeCreature(creatures.begin() + (battleField.activeCreature - battleField.creatures.begin()))
     , round(battleField.round)
     , originalTeamSize(battleField.originalTeamSize)
+    , turnStart(battleField.turnStart)
 {
 }
 
@@ -43,13 +45,14 @@ void TBattleField::OnTurnEnd()
     if (activeCreature == creatures.end()) {
         OnRoundStart();
     }
-    OnTurnStart();
+    turnStart = true;
 }
 
 void TBattleField::OnTurnStart()
 {
     activeCreature->resources.OnTurnStart();
     activeCreature->speed = 6;
+    turnStart = false;
 }
 
 double TBattleField::GetEstimate() const
@@ -63,18 +66,48 @@ double TBattleField::GetEstimate() const
     return 1. / (1. + std::exp(2 * (result[1] - result[0])));
 }
 
-TEncounter::TEncounter(int width, int height, int randSeed)
-    : rng(randSeed)
-    , width(width)
+TEncounter::TEncounter(int width, int height)
+    : width(width)
     , height(height)
 {
 }
 
-void TEncounter::AddCreature(const TStatblock& statblock, int x, int y, int team)
+void TEncounter::AddCreature(std::shared_ptr<const TStatblock> statblock, int x, int y, int team)
 {
     creatures.emplace_back(statblock);
     creatures.back().position = TPosition{x, y};
     creatures.back().team = team;
+}
+
+TParallelWorlds TEncounter::OnTurnStart(TBattleField battleField) const
+{
+    battleField.OnTurnStart();
+    TParallelWorlds result;
+    auto resources = battleField.activeCreature->resources.NeedRecover56();
+    if (battleField.round == 1) {
+        for (auto res : resources) {
+            battleField.activeCreature->resources.Add(TResource(res, 1));
+        }
+        result.emplace_back(1., battleField);
+        return result;
+    }
+    for (int mask = 0; mask < (1 << resources.size()); ++mask) {
+        double prob = 1.;
+        TBattleField world(battleField);
+        for (int i = 0; i < resources.size(); ++i) {
+            if (mask & (1 << i)) {
+                prob *= (1. / 3.);
+                world.activeCreature->resources.Add(TResource(resources[i], 1));
+            } else {
+                prob *= (2. / 3.);
+            }
+        }
+        result.emplace_back(prob, world);
+    }
+    if (result.empty()) {
+        result.emplace_back(1, battleField);
+    }
+    return result;
 }
 
 double TEncounter::GetWinProbability()
@@ -96,6 +129,18 @@ double TEncounter::GetWinProbability()
 
 double TEncounter::GetWinProbability(TBattleField battleField, TConfig config, std::string space)
 {
+    if (battleField.turnStart) {
+        TParallelWorlds worlds = OnTurnStart(battleField);
+        double fullResult = 0;
+        for (auto& [prob, world] : worlds) {
+            fullResult += prob * GetWinProbability(
+                world,
+                config,
+                space + "  "
+            );
+        }
+        return fullResult;
+    }
     if (config.weightOfTimeline < 1e-3) {
         return battleField.GetEstimate();
     }
@@ -168,10 +213,7 @@ double TEncounter::GetWinProbability(TBattleField battleField, TConfig config, s
         if (updateResult(fullResult, &worlds)) {
             // Нашли ожидаемый лучший ход - сделаем его и найдем ответ для новой позиции
             if (config.mode == EMode::FindAnswer) {
-                if (bestMove == nullptr) {
-                    std::cerr << "nullptr 1" << std::endl;
-                }
-                std::cerr << "kek" << std::endl;
+                //std::cerr << space << "FindAnswer" << std::endl;
                 result = 0;
                 for (auto& [prob, world] : (*bestMove)) {
                     result += prob * GetWinProbability(
@@ -194,9 +236,7 @@ double TEncounter::GetWinProbability(TBattleField battleField, TConfig config, s
     // Нельзя пропускать ход, если можно сделать что-то не помеченное как optional
     if (hasNotOptionalAction) {
         if (config.mode == EMode::FindAnswer) {
-            if (bestMove == nullptr) {
-                std::cerr << "nullptr 2" << std::endl;
-            }
+            //std::cerr << space << "FindAnswer" << std::endl;
             result = 0;
             for (auto& [prob, world] : (*bestMove)) {
                 result += prob * GetWinProbability(
@@ -216,8 +256,6 @@ double TEncounter::GetWinProbability(TBattleField battleField, TConfig config, s
     }
     battleField.OnTurnEnd();
 
-    //std::cerr << space << "EndTurn" << std::endl;
-
     updateResult(GetWinProbability(
         battleField,
         TConfig{
@@ -230,6 +268,7 @@ double TEncounter::GetWinProbability(TBattleField battleField, TConfig config, s
         space + "  "), nullptr);
 
     if (config.mode == EMode::FindAnswer) {
+        //std::cerr << space << "FindAnswer" << std::endl;
         if (bestMove == nullptr) {
             return GetWinProbability(
                 battleField,
@@ -366,7 +405,7 @@ std::vector<TParallelWorlds> TEncounter::MakeAction(const TBattleField& battleFi
                 if (battleField.creatures[i].position.y < left_y_area || battleField.creatures[i].position.y >= left_y_area + action.size) {
                     continue;
                 }
-                if (battleField.activeCreature->team == battleField.activeCreature[i].team) {
+                if (battleField.activeCreature->team == battleField.creatures[i].team) {
                     creatureSet.first.emplace_back(i);
                 } else {
                     creatureSet.second.emplace_back(i);
@@ -380,6 +419,42 @@ std::vector<TParallelWorlds> TEncounter::MakeAction(const TBattleField& battleFi
             wayToCast.insert(creatureSet);
         }
     }
+
+    std::set<TAreaCreatureSet> filteredWayToCast;
+    auto isSubSeq = [&](const std::vector<int>& a, const std::vector<int>& b) {
+        int ptr = 0;
+        for (auto i : a) {
+            if (ptr == b.size()) {
+                return false;
+            }
+            if (b[ptr] == i) {
+                ++ptr;
+                continue;
+            }
+            ++ptr;
+            if (ptr == b.size()) {
+                return false;
+            }
+        }
+        return true;
+    };
+    for (const TAreaCreatureSet& way : wayToCast) {
+        bool flag = true;
+        for (const TAreaCreatureSet& otherWay : wayToCast) {
+            if (way == otherWay) {
+                continue;
+            }
+            if (isSubSeq(otherWay.first, way.first) && isSubSeq(way.second, otherWay.second)) {
+                flag = false;
+                break;
+            }
+        }
+        if (flag) {
+            filteredWayToCast.insert(way);
+        }
+    }
+
+    wayToCast.swap(filteredWayToCast);
 
     for (auto& way : wayToCast) {
         std::vector<int> creatures;

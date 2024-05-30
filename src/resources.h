@@ -14,6 +14,7 @@ std::string GetResourceName(TResourceId id);
 class TResource {
 public:
     TResource(const rapidjson::Value& json);
+    TResource(TResourceId id, int count);
 
     TResourceId id;
     int count;
@@ -31,6 +32,8 @@ public:
     void OnTurnEnd();
     void Recover(TResource resource);
     void AddTmpResource(TResource resource);
+
+    std::vector<TResourceId> NeedRecover56() const;
 
     // При наличии ресурсов, восстанавливающихся с определенной вероятностью
     // нужно рассматривать два варианта развития событий - где ресурс восстановился и где не восстановился

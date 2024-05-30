@@ -1,8 +1,8 @@
 {
     "name": "cleric",
     "proficiency": 3,
-    "level": 8,
-    "max_hp": 70,
+    "level": 6,
+    "max_hp": 54,
     "armour_class": 22,
     "resources": [
         {

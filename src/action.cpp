@@ -401,13 +401,19 @@ TSpellAreaEnemy::TSpellAreaEnemy(TParser& parser, const rapidjson::Value& json)
 void TSpellAreaEnemy::Cast(const TBattleField* battleField, int creatureId,
     const std::vector<int>& targets, TParallelWorlds* battles) const
 {
-    battles->emplace_back(1., *battleField);
-    ChangeResources(battles->back().second.creatures[creatureId].resources);
+    for (int i : targets) {
+        if (i == creatureId) {
+            throw std::logic_error("damage self unsupported yet");
+        }
+    }
+    TBattleField battle = *battleField;
+    ChangeResources(battle.creatures[creatureId].resources);
 
     for (int i : targets) {
-        TCreature& target = battles->back().second.creatures[i];
+        TCreature& target = battle.creatures[i];
         TDistribution targetDamage = damage.value().GetDistributionFor(&target);
         double probFailSave = ProbFailSaveThrow(&target);
         target.hitpoints -= TDistribution(std::vector<std::pair<double, TDistribution>>{{probFailSave, targetDamage / 2}, {1. - probFailSave, targetDamage}});
     }
+    DivWorldByDeath(&battle, targets, battles, 1.);
 }

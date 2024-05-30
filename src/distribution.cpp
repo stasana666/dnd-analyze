@@ -94,7 +94,15 @@ TDistribution TDistribution::operator *(int count) const
 
 TDistribution TDistribution::operator /(int count) const
 {
-    throw std::runtime_error("not supported: TDistribution::operator /");
+    std::map<int, double> resultMap;
+    for (auto [prob, value] : valueByProbability) {
+            resultMap[value / count] += prob;
+    }
+    std::vector<std::pair<double, int>> resultVec;
+    for (auto [value, prob] : resultMap) {
+        resultVec.emplace_back(prob, value);
+    }
+    return TDistribution(std::move(resultVec));
 }
 
 TDistribution& TDistribution::operator +=(const TDistribution& other)

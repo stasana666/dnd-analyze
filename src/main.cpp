@@ -1,18 +1,19 @@
 #include <iostream>
 #include <fstream>
+#include <unordered_map>
 
 #include <rapidjson/document.h>
 #include <rapidjson/schema.h>
 
 #include "statblock.h"
-#include "statblock_json_schema.h"
+#include "json_schema.h"
 #include "creature.h"
 #include "battlefield.h"
 
 using namespace std;
 using namespace rapidjson;
 
-TStatblock GetStatblock(SchemaValidator& validator, std::string path)
+TEncounter EncounterFromJson(SchemaValidator& validator, std::string path)
 {
     std::string json;
     ifstream in(path);
@@ -30,7 +31,16 @@ TStatblock GetStatblock(SchemaValidator& validator, std::string path)
         throw std::logic_error(path + " schema is invalid: " + sb.GetString() + ", " + validator.GetInvalidSchemaKeyword());
     }
 
-    return TStatblock(d);
+    std::unordered_map<std::string, std::shared_ptr<const TStatblock>> statblockByName;
+    for (auto& statblockJson : d["statblocks"].GetArray()) {
+        TStatblock statblock(statblockJson);
+        statblockByName[statblockJson["name"].GetString()] = std::make_shared<const TStatblock>(statblockJson);
+    }
+    TEncounter encounter(d["width"].GetInt(), d["height"].GetInt());
+    for (auto& creatureJson : d["creatures"].GetArray()) {
+        encounter.AddCreature(statblockByName.at(creatureJson["name"].GetString()), creatureJson["x"].GetInt(), creatureJson["y"].GetInt(), creatureJson["team"].GetInt());
+    }
+    return encounter;
 }
 
 int main(int argc, char** argv) {
@@ -43,16 +53,7 @@ int main(int argc, char** argv) {
 
     SchemaValidator validator(schema);
 
-    std::cerr << "schema create" << std::endl;
-    TStatblock cleric = GetStatblock(validator, argv[1]);
-    std::cerr << argv[1] << std::endl;
-    TStatblock chimera = GetStatblock(validator, argv[2]);
-    std::cerr << argv[2] << std::endl;
-
-    TEncounter encounter(2, 2, 0);
-
-    encounter.AddCreature(cleric, 0, 0, 0);
-    encounter.AddCreature(chimera, 1, 0, 1);
+    TEncounter encounter = EncounterFromJson(validator, argv[1]);
 
     double res = encounter.GetWinProbability();
     std::cout << res << std::endl;

@@ -1,10 +1,10 @@
 #include "creature.h"
 
-TCreature::TCreature(const TStatblock& statblock)
-    : parent(&statblock)
+TCreature::TCreature(std::shared_ptr<const TStatblock> statblock)
+    : parent(statblock)
     , position({0, 0})
-    , resources(statblock.resources)
-    , hitpoints(statblock.maxHp)
+    , resources(statblock->resources)
+    , hitpoints(statblock->maxHp)
 {
 }
 

@@ -1,0 +1,379 @@
+{
+    "width": 6,
+    "height": 6,
+    "creatures": [
+        {
+            "name": "chimera",
+            "x": 2,
+            "y": 2,
+            "team": 1
+        },
+        {
+            "name": "cleric",
+            "x": 1,
+            "y": 1,
+            "team": 0
+        },
+        {
+            "name": "warrior",
+            "x": 1,
+            "y": 2,
+            "team": 0
+        }
+    ],
+    "statblocks": [
+        {
+            "name": "chimera",
+            "proficiency": 3,
+            "level": 6,
+            "max_hp": 114,
+            "armour_class": 14,
+            "resources": [
+                {
+                    "name": "fire_breath",
+                    "count": 1,
+                    "recovery": "recovery 5-6"
+                },
+                {
+                    "name": "action",
+                    "count": 1,
+                    "recovery": "on_turn_start"
+                },
+                {
+                    "name": "second_action",
+                    "count": 0
+                },
+                {
+                    "name": "third_action",
+                    "count": 0
+                }
+            ],
+            "actions": [
+                {
+                    "name": "fire_breath",
+                    "type": "spell_area_enemy",
+                    "size": 2,
+                    "savethrow": "dexterity",
+                    "difficulty": "15",
+                    "damage": {
+                        "fire": "7d8"
+                    },
+                    "consume_resources": [
+                        {
+                            "name": "fire_breath",
+                            "count": 1
+                        },
+                        {
+                            "name": "action",
+                            "count": 1
+                        }
+                    ],
+                    "recover_resources": [
+                        {
+                            "name": "second_action",
+                            "count": 1
+                        }
+                    ]
+                },
+                {
+                    "name": "fire_breath",
+                    "type": "spell_area_enemy",
+                    "size": 2,
+                    "savethrow": "dexterity",
+                    "difficulty": "15",
+                    "damage": {
+                        "fire": "7d8"
+                    },
+                    "consume_resources": [
+                        {
+                            "name": "fire_breath",
+                            "count": 1
+                        },
+                        {
+                            "name": "second_action",
+                            "count": 1
+                        }
+                    ],
+                    "recover_resources": [
+                        {
+                            "name": "third_action",
+                            "count": 1
+                        }
+                    ]
+                },
+                {
+                    "name": "bite",
+                    "type": "melee_attack",
+                    "damage": {
+                        "piercing": "2d6 + 4"
+                    },
+                    "crit_damage": {
+                        "piercing": "4d6 + 4"
+                    },
+                    "attack": "7",
+                    "consume_resources": [
+                        {
+                            "name": "action",
+                            "count": 1
+                        }
+                    ],
+                    "recover_resources": [
+                        {
+                            "name": "second_action",
+                            "count": 1
+                        }
+                    ]
+                },
+                {
+                    "name": "horns",
+                    "type": "melee_attack",
+                    "damage": {
+                        "bludgeoning": "1d12 + 4"
+                    },
+                    "crit_damage": {
+                        "bludgeoning": "2d12 + 4"
+                    },
+                    "attack": "7",
+                    "consume_resources": [
+                        {
+                            "name": "second_action",
+                            "count": 1
+                        }
+                    ],
+                    "recover_resources": [
+                        {
+                            "name": "third_action",
+                            "count": 1
+                        }
+                    ]
+                },
+                {
+                    "name": "puch",
+                    "type": "melee_attack",
+                    "damage": {
+                        "piercing": "2d6 + 4"
+                    },
+                    "crit_damage": {
+                        "slashing": "4d6 + 4"
+                    },
+                    "attack": "7",
+                    "consume_resources": [
+                        {
+                            "name": "third_action",
+                            "count": 1
+                        }
+                    ]
+                }
+            ],
+            "stats": {
+                "strength": 19,
+                "dexterity": 11,
+                "constitution": 19,
+                "intelligence": 3,
+                "wisdom": 14,
+                "charisma": 10
+            },
+            "savethrows": {
+                "strength": "mod_strength + proficiency",
+                "constitution": "mod_strength + proficiency"
+            }
+        },
+        {
+            "name": "warrior",
+            "level": 6,
+            "proficiency": 3,
+            "max_hp": 73,
+            "armour_class": 19,
+            "resources": [
+                {
+                    "name": "action",
+                    "count": 1,
+                    "recovery": "on_turn_start"
+                },
+                {
+                    "name": "action_surge",
+                    "count": 1
+                },
+                {
+                    "name": "second_attack",
+                    "count": 0
+                }
+            ],
+            "actions": [
+                {
+                    "name": "longsword",
+                    "type": "melee_attack",
+                    "damage": {
+                        "slashing": "2d6 + mod_strength"
+                    },
+                    "crit_damage": {
+                        "slashing": "4d6 + mod_strength"
+                    },
+                    "attack": "mod_strength + proficiency",
+                    "consume_resources": [
+                        {
+                            "name": "action",
+                            "count": 1
+                        }
+                    ],
+                    "recover_resources": [
+                        {
+                            "name": "second_attack",
+                            "count": 0
+                        }
+                    ]
+                },
+                {
+                    "name": "action_surge",
+                    "type": "spell_target_self",
+                    "consume_resources": [
+                        {
+                            "name": "action_surge",
+                            "count": 1
+                        }
+                    ],
+                    "recover_resources": [
+                        {
+                            "name": "action",
+                            "count": 1
+                        }
+                    ]
+                },
+                {
+                    "name": "second_longsword",
+                    "type": "melee_attack",
+                    "damage": {
+                        "slashing": "2d6 + mod_strength"
+                    },
+                    "crit_damage": {
+                        "slashing": "4d6 + mod_strength"
+                    },
+                    "attack": "mod_strength + proficiency",
+                    "consume_resources": [
+                        {
+                            "name": "second_attack",
+                            "count": 1
+                        }
+                    ]
+                }
+            ],
+            "stats": {
+                "strength": 18,
+                "dexterity": 8,
+                "constitution": 16,
+                "intelligence": 8,
+                "wisdom": 8,
+                "charisma": 8
+            },
+            "savethrows": {
+                "strength": "mod_strength + proficiency",
+                "constitution": "mod_constitution + proficiency"
+            }
+        },
+        {
+            "name": "cleric",
+            "proficiency": 3,
+            "level": 6,
+            "max_hp": 54,
+            "armour_class": 22,
+            "resources": [
+                {
+                    "name": "divine_channel",
+                    "count": 3
+                },
+                {
+                    "name": "action",
+                    "count": 1,
+                    "recovery": "on_turn_start"
+                },
+                {
+                    "name": "spell_1",
+                    "count": 4
+                }
+            ],
+            "actions": [
+                {
+                    "name": "death_touch_sword",
+                    "type": "melee_attack",
+                    "damage": {
+                        "slashing": "d6 + mod_dexterity",
+                        "necrosis": "5 + level + level"
+                    },
+                    "crit_damage": {
+                        "slashing": "2d6 + mod_dexterity",
+                        "necrosis": "5 + level + level"
+                    },
+                    "attack": "mod_dexterity + proficiency",
+                    "consume_resources": [
+                        {
+                            "name": "action",
+                            "count": 1
+                        }
+                    ],
+                    "consume_on_success": [
+                        {
+                            "name": "divine_channel",
+                            "count": 1
+                        }
+                    ]
+                },
+                {
+                    "name": "death_touch_inflict_wounds_1",
+                    "type": "melee_attack",
+                    "damage": {
+                        "necrosis": "5 + level + level + 3d10"
+                    },
+                    "crit_damage": {
+                        "necrosis": "5 + level + level + 6d10"
+                    },
+                    "attack": "mod_wisdom + proficiency + 1",
+                    "consume_resources": [
+                        {
+                            "name": "action",
+                            "count": 1
+                        },
+                        {
+                            "name": "spell_1",
+                            "count": 1
+                        }
+                    ],
+                    "consume_on_success": [
+                        {
+                            "name": "divine_channel",
+                            "count": 1
+                        }
+                    ]
+                },
+                {
+                    "name": "sword",
+                    "type": "melee_attack",
+                    "damage": {
+                        "slashing": "d6 + mod_dexterity"
+                    },
+                    "crit_damage": {
+                        "slashing": "d6"
+                    },
+                    "attack": "mod_dexterity + proficiency",
+                    "consume_resources": [
+                        {
+                            "name": "action",
+                            "count": 1
+                        }
+                    ]
+                }
+            ],
+            "stats": {
+                "strength": 8,
+                "dexterity": 14,
+                "constitution": 12,
+                "intelligence": 12,
+                "wisdom": 22,
+                "charisma": 12
+            },
+            "savethrows": {
+                "strength": "mod_strength + proficiency",
+                "constitution": "mod_strength + proficiency"
+            }
+        }        
+    ]
+}

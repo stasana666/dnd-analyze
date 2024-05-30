@@ -20,6 +20,7 @@ public:
     std::vector<TCreature>::iterator activeCreature;
     int round = 0;
     std::array<int, 2> originalTeamSize;
+    bool turnStart = false;
 };
 
 // Для различных ситуаций, когда нужно рассматривать несколько исходов одного действия
@@ -28,9 +29,9 @@ using TParallelWorlds = std::vector<std::pair<double, TBattleField>>;
 
 class TEncounter {
 public:
-    TEncounter(int width, int height, int randSeed);
+    TEncounter(int width, int height);
 
-    void AddCreature(const TStatblock& statblock, int x, int y, int team);
+    void AddCreature(std::shared_ptr<const TStatblock> statblock, int x, int y, int team);
 
     double GetWinProbability();
 
@@ -44,6 +45,8 @@ public:
     std::vector<TParallelWorlds> MakeAction(const TBattleField& battleField, const TBaseAction* actionPtr, bool& hasAction);
 
 private:
+    TParallelWorlds OnTurnStart(TBattleField battleField) const;
+
     enum class EMode {
         FindBestMove,
         FindAnswer
@@ -63,5 +66,4 @@ private:
     int width;
     int height;
     std::vector<TCreature> creatures;
-    std::mt19937 rng;
 };

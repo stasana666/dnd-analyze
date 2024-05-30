@@ -1,8 +1,8 @@
 {
-    "name": "Jon",
-    "level": 5,
+    "name": "warrior",
+    "level": 6,
     "proficiency": 3,
-    "max_hp": 1,
+    "max_hp": 73,
     "armour_class": 18,
     "resources": [
         {
@@ -12,7 +12,7 @@
         },
         {
             "name": "action_surge",
-            "count": 0
+            "count": 1
         },
         {
             "name": "second_attack",

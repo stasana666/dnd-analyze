@@ -32,6 +32,12 @@ TResource::TResource(const rapidjson::Value& json)
 {
 }
 
+TResource::TResource(TResourceId id, int count)
+    : id(id)
+    , count(count)
+{
+}
+
 TResources::TResources(const rapidjson::Value& json)
 {
     for (auto& resJson : json.GetArray()) {
@@ -93,4 +99,16 @@ void TResources::Add(TResource resource)
 void TResources::AddTmpResource(TResource resource)
 {
     tmpResources[resource.id.Id] += resource.count;
+}
+
+std::vector<TResourceId> TResources::NeedRecover56() const
+{
+    std::vector<TResourceId> result;
+    for (TResourceId res : recover56) {
+        if (resources.at(res.Id) > 0) {
+            continue;
+        }
+        result.emplace_back(res);
+    }
+    return result;
 }
