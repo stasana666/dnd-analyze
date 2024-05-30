@@ -8,7 +8,7 @@
 
 namespace {
 
-constexpr int kDepth = 15;
+constexpr int kDepth = 11;
 
 }
 
@@ -110,7 +110,7 @@ TParallelWorlds TEncounter::OnTurnStart(TBattleField battleField) const
     return result;
 }
 
-double TEncounter::GetWinProbability()
+TResult TEncounter::GetWinProbability()
 {
     TBattleField battleField(creatures);
     battleField.OnRoundStart();
@@ -127,22 +127,22 @@ double TEncounter::GetWinProbability()
     );
 }
 
-double TEncounter::GetWinProbability(TBattleField battleField, TConfig config, std::string space)
+TResult TEncounter::GetWinProbability(TBattleField battleField, TConfig config, std::string space)
 {
     if (battleField.turnStart) {
         TParallelWorlds worlds = OnTurnStart(battleField);
-        double fullResult = 0;
+        TResult fullResult(0, -1);
         for (auto& [prob, world] : worlds) {
-            fullResult += prob * GetWinProbability(
+            fullResult += GetWinProbability(
                 world,
                 config,
                 space + "  "
-            );
+            ) * prob;
         }
         return fullResult;
     }
     if (config.weightOfTimeline < 1e-3) {
-        return battleField.GetEstimate();
+        return TResult(battleField.GetEstimate(), -1);
     }
 
     const int CurrentTeam = battleField.activeCreature->team;
@@ -151,30 +151,30 @@ double TEncounter::GetWinProbability(TBattleField battleField, TConfig config, s
         ++teamsSize[creature.team];
     }
     if (teamsSize[0] == 0) {
-        return 0;
+        return TResult(0, 0);
     }
     if (teamsSize[1] == 0) {
-        return 1;
+        return TResult(1, teamsSize[0]);
     }
 
     if (config.mode == EMode::FindBestMove && config.depth == 0) {
-        return battleField.GetEstimate();
+        return TResult(battleField.GetEstimate(), -1);
     }
 
-    double result = CurrentTeam;
+    TResult result(CurrentTeam, -1);
     TParallelWorlds* bestMove = nullptr;
-    auto updateResult = [&](double localRes, TParallelWorlds* move) {
+    auto updateResult = [&](TResult localRes, TParallelWorlds* move) {
         if (CurrentTeam == 0) {
             if (localRes > result) {
                 bestMove = move;
             }
-            config.alpha = std::max(config.alpha, localRes);
+            config.alpha = std::max(config.alpha, localRes.probWin);
             result = std::max(result, localRes);
         } else if (CurrentTeam == 1) {
             if (localRes < result) {
                 bestMove = move;
             }
-            config.beta = std::min(config.beta, localRes);
+            config.beta = std::min(config.beta, localRes.probWin);
             result = std::min(result, localRes);
         } else {
             throw std::logic_error("unexpected team");
@@ -196,9 +196,9 @@ double TEncounter::GetWinProbability(TBattleField battleField, TConfig config, s
     }
 
     for (TParallelWorlds& worlds : multiverse) {
-        double fullResult = 0;
+        TResult fullResult(0, -1);
         for (auto& [prob, world] : worlds) {
-            fullResult += prob * GetWinProbability(
+            fullResult += GetWinProbability(
                 world,
                 TConfig{
                     .alpha = config.alpha,
@@ -208,15 +208,15 @@ double TEncounter::GetWinProbability(TBattleField battleField, TConfig config, s
                     .depth = config.depth - 1
                 },
                 space + "  "
-            );
+            ) * prob;
         }
         if (updateResult(fullResult, &worlds)) {
             // Нашли ожидаемый лучший ход - сделаем его и найдем ответ для новой позиции
             if (config.mode == EMode::FindAnswer) {
                 //std::cerr << space << "FindAnswer" << std::endl;
-                result = 0;
+                result = TResult(0, -1);
                 for (auto& [prob, world] : (*bestMove)) {
-                    result += prob * GetWinProbability(
+                    result += GetWinProbability(
                         world,
                         TConfig{
                             .alpha = 0.,
@@ -226,7 +226,7 @@ double TEncounter::GetWinProbability(TBattleField battleField, TConfig config, s
                             .depth = kDepth
                         },
                         space + "  "
-                    );
+                    ) * prob;
                 }
             }
             return result;
@@ -237,9 +237,9 @@ double TEncounter::GetWinProbability(TBattleField battleField, TConfig config, s
     if (hasNotOptionalAction) {
         if (config.mode == EMode::FindAnswer) {
             //std::cerr << space << "FindAnswer" << std::endl;
-            result = 0;
+            result = TResult(0, -1);
             for (auto& [prob, world] : (*bestMove)) {
-                result += prob * GetWinProbability(
+                result += GetWinProbability(
                     world,
                     TConfig{
                         .alpha = 0.,
@@ -249,7 +249,7 @@ double TEncounter::GetWinProbability(TBattleField battleField, TConfig config, s
                         .depth = kDepth
                     },
                     space + "  "
-                );
+                ) * prob;
             }
         }
         return result;
@@ -282,9 +282,9 @@ double TEncounter::GetWinProbability(TBattleField battleField, TConfig config, s
                 space + " "
             );
         } else {
-            result = 0;
+            result = TResult(0, -1);
             for (auto& [prob, world] : (*bestMove)) {
-                result += prob * GetWinProbability(
+                result += GetWinProbability(
                     world,
                     TConfig{
                         .alpha = 0.,
@@ -294,7 +294,7 @@ double TEncounter::GetWinProbability(TBattleField battleField, TConfig config, s
                         .depth = kDepth
                     },
                     space + "  "
-                );
+                ) * prob;
             }
         }
     }

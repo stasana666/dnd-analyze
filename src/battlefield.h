@@ -1,5 +1,6 @@
 #pragma once
 
+#include "result.h"
 #include "creature.h"
 #include <memory>
 
@@ -33,7 +34,7 @@ public:
 
     void AddCreature(std::shared_ptr<const TStatblock> statblock, int x, int y, int team);
 
-    double GetWinProbability();
+    TResult GetWinProbability();
 
     std::vector<TParallelWorlds> MakeAction(const TBattleField& battleField, const TMeleeAttack& action, bool& hasAction);
     std::vector<TParallelWorlds> MakeAction(const TBattleField& battleField, const TRangeAttack& action, bool& hasAction);
@@ -60,7 +61,7 @@ private:
         int depth;
     };
 
-    double GetWinProbability(TBattleField battleField, TConfig config, std::string space);
+    TResult GetWinProbability(TBattleField battleField, TConfig config, std::string space);
     void RollInitiative();
 
     int width;

@@ -13,6 +13,8 @@
 using namespace std;
 using namespace rapidjson;
 
+int playersCount = 0;
+
 TEncounter EncounterFromJson(SchemaValidator& validator, std::string path)
 {
     std::string json;
@@ -38,6 +40,9 @@ TEncounter EncounterFromJson(SchemaValidator& validator, std::string path)
     }
     TEncounter encounter(d["width"].GetInt(), d["height"].GetInt());
     for (auto& creatureJson : d["creatures"].GetArray()) {
+        if (creatureJson["team"].GetInt() == 0) {
+            ++playersCount;
+        }
         encounter.AddCreature(statblockByName.at(creatureJson["name"].GetString()), creatureJson["x"].GetInt(), creatureJson["y"].GetInt(), creatureJson["team"].GetInt());
     }
     return encounter;
@@ -55,6 +60,9 @@ int main(int argc, char** argv) {
 
     TEncounter encounter = EncounterFromJson(validator, argv[1]);
 
-    double res = encounter.GetWinProbability();
-    std::cout << res << std::endl;
+    TResult res = encounter.GetWinProbability();
+    std::cout << "prob players win: " << res.probWin << std::endl;
+    for (int i = 0; i <= playersCount; ++i) {
+        std::cerr << "prob that " << i << " players alive: " << res.alivePlayers[i] << std::endl;
+    }
 }

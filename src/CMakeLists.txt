@@ -11,4 +11,5 @@ add_executable(dnd_analyzer
     resources.cpp
     status.cpp
     characteristics.cpp
+    result.cpp
 )
